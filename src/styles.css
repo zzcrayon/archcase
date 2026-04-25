@@ -577,6 +577,28 @@ h1 {
   opacity: 0.42;
 }
 
+.image-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  color: rgba(247, 242, 232, 0.84);
+  text-align: center;
+  background:
+    linear-gradient(90deg, rgba(255, 253, 248, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.08) 1px, transparent 1px),
+    #3a3833;
+  background-size: 36px 36px;
+}
+
+.image-placeholder span {
+  position: relative;
+  z-index: 1;
+  font-size: 0.94rem;
+  letter-spacing: 0.06em;
+}
+
 .case-card-index {
   position: absolute;
   right: 16px;
@@ -1209,6 +1231,22 @@ h1 {
 .detail-image-wrap:focus-visible {
   outline: 3px solid rgba(247, 242, 232, 0.36);
   outline-offset: -8px;
+}
+
+.detail-image-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  padding: 32px;
+  color: rgba(247, 242, 232, 0.86);
+  text-align: center;
+}
+
+.detail-image-placeholder span {
+  font-size: clamp(1.4rem, 3vw, 2.4rem);
+  letter-spacing: 0.06em;
 }
 
 .detail-content {

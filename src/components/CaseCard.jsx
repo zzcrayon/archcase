@@ -1,8 +1,14 @@
+import { useEffect, useState } from 'react'
 import { formatAverageRating } from '../utils/ratings'
 
 function CaseCard({ item, displayIndex, onDelete, onEdit, onView }) {
+  const [hasImageError, setHasImageError] = useState(false)
   const displayNumber = String(displayIndex + 1).padStart(2, '0')
   const averageRating = formatAverageRating(item.ratings)
+
+  useEffect(() => {
+    setHasImageError(false)
+  }, [item.image])
 
   const handleKeyDown = (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -30,7 +36,18 @@ function CaseCard({ item, displayIndex, onDelete, onEdit, onView }) {
       onKeyDown={handleKeyDown}
     >
       <div className="case-image-wrap">
-        <img src={item.image} alt={`${item.name}建筑图片`} className="case-image" />
+        {item.image && !hasImageError ? (
+          <img
+            src={item.image}
+            alt={`${item.name}建筑图片`}
+            className="case-image"
+            onError={() => setHasImageError(true)}
+          />
+        ) : (
+          <div className="image-placeholder">
+            <span>{item.name}</span>
+          </div>
+        )}
         <span className="case-card-index">{displayNumber}</span>
       </div>
       <div className="case-body">

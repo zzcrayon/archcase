@@ -9,9 +9,36 @@ import { normalizeRatings } from './utils/ratings'
 
 const STORAGE_KEY = 'archcase_cases'
 
+const defaultImageById = new Map(cases.map((caseItem) => [caseItem.id, caseItem.image]))
+const defaultImageByName = new Map(cases.map((caseItem) => [caseItem.name, caseItem.image]))
+const defaultImageByType = new Map(cases.map((caseItem) => [caseItem.type, caseItem.image]))
+
+const isStoredLocalAssetPath = (image = '') =>
+  image.startsWith('./assets') ||
+  image.startsWith('/src/assets') ||
+  image.startsWith('src/assets') ||
+  image.startsWith('/assets/')
+
+const getDefaultImageForCase = (caseItem) =>
+  defaultImageById.get(caseItem.id) ||
+  defaultImageByName.get(caseItem.name) ||
+  defaultImageByType.get(caseItem.type) ||
+  cases[0].image
+
+const normalizeImage = (caseItem) => {
+  const image = typeof caseItem.image === 'string' ? caseItem.image.trim() : ''
+
+  if (!image || isStoredLocalAssetPath(image)) {
+    return getDefaultImageForCase(caseItem)
+  }
+
+  return image
+}
+
 const normalizeCase = (caseItem) => ({
   ...caseItem,
   id: caseItem.id ?? Date.now(),
+  image: normalizeImage(caseItem),
   tags: Array.isArray(caseItem.tags) ? caseItem.tags : [],
   ratings: normalizeRatings(caseItem.ratings),
 })

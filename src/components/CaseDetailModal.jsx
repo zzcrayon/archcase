@@ -3,7 +3,12 @@ import { RATING_FIELDS, normalizeRatings, renderRatingStars } from '../utils/rat
 
 function CaseDetailModal({ item, onClose }) {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
+  const [hasImageError, setHasImageError] = useState(false)
   const ratings = normalizeRatings(item.ratings)
+
+  useEffect(() => {
+    setHasImageError(false)
+  }, [item.image])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -71,8 +76,19 @@ function CaseDetailModal({ item, onClose }) {
           onClick={() => setIsImagePreviewOpen(true)}
           aria-label={`查看${item.name}大图`}
         >
-          <img src={item.image} alt={`${item.name}建筑详情图片`} className="detail-image" />
-          <span className="detail-image-hint">点击查看大图</span>
+          {item.image && !hasImageError ? (
+            <img
+              src={item.image}
+              alt={`${item.name}建筑详情图片`}
+              className="detail-image"
+              onError={() => setHasImageError(true)}
+            />
+          ) : (
+            <div className="detail-image-placeholder">
+              <span>{item.name}</span>
+            </div>
+          )}
+          {!hasImageError && <span className="detail-image-hint">点击查看大图</span>}
         </button>
 
         <div className="detail-content">
@@ -130,7 +146,7 @@ function CaseDetailModal({ item, onClose }) {
         </div>
       </section>
 
-      {isImagePreviewOpen && (
+      {isImagePreviewOpen && !hasImageError && (
         <div
           className="image-preview-backdrop"
           onClick={(event) => {
