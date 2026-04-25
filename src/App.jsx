@@ -166,6 +166,22 @@ function App() {
     setAllCases(normalizedCases)
   }
 
+  const handleResetCases = () => {
+    const shouldReset = window.confirm('重置默认案例会清除当前本地保存的数据，是否继续？')
+
+    if (!shouldReset) {
+      return
+    }
+
+    localStorage.removeItem(STORAGE_KEY)
+    setSearchTerm('')
+    setActiveCategory('全部')
+    setSelectedCase(null)
+    setEditingCase(null)
+    setIsModalOpen(false)
+    setAllCases(cases.map(normalizeCase))
+  }
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -177,6 +193,16 @@ function App() {
             <p className="subtitle">
               收藏、整理与分析你的建筑案例，用作品集的方式建立自己的设计参考系统。
             </p>
+            <p className="hero-description">
+              A personal architecture reference system built with React + Vite.
+              <br />
+              用于建筑案例收藏、评分、分析与资料管理的前端作品。
+            </p>
+            <div className="hero-tags" aria-label="项目标签">
+              <span>React / Vite</span>
+              <span>Architecture Research</span>
+              <span>Portfolio Project</span>
+            </div>
           </div>
           <div className="hero-meta">
             <div>
@@ -220,7 +246,12 @@ function App() {
         </div>
       </section>
 
-      <DataTools cases={allCases} onImportCases={handleImportCases} />
+      <DataTools cases={allCases} onImportCases={handleImportCases} onResetCases={handleResetCases} />
+
+      <section className="storage-notice" aria-label="本地存储提示">
+        当前版本使用浏览器本地存储，新增和编辑的数据仅保存在当前设备，请使用 JSON
+        导出功能备份数据。
+      </section>
 
       <StatsPanel cases={allCases} categories={categories} />
 
@@ -259,6 +290,13 @@ function App() {
       {selectedCase && (
         <CaseDetailModal item={selectedCase} onClose={() => setSelectedCase(null)} />
       )}
+
+      <footer className="site-footer">
+        <span>ArchCase © 2026</span>
+        <span>Designed & developed by zzcrayon</span>
+        <span>Built with React + Vite</span>
+        <span>Data stored locally in your browser</span>
+      </footer>
     </main>
   )
 }

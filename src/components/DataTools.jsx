@@ -7,7 +7,7 @@ const isValidCase = (item) =>
   typeof item === 'object' &&
   REQUIRED_FIELDS.every((field) => typeof item[field] === 'string' && item[field].trim())
 
-function DataTools({ cases, onImportCases }) {
+function DataTools({ cases, onImportCases, onResetCases }) {
   const fileInputRef = useRef(null)
 
   const handleExport = () => {
@@ -81,6 +81,9 @@ function DataTools({ cases, onImportCases }) {
         </button>
         <button type="button" onClick={handleImportClick}>
           导入数据
+        </button>
+        <button type="button" onClick={onResetCases}>
+          重置默认案例
         </button>
       </div>
 

@@ -109,6 +109,7 @@ h1 {
   font-size: clamp(2.35rem, 5vw, 5.1rem);
   font-weight: 500;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .subtitle {
@@ -117,6 +118,32 @@ h1 {
   color: #5e594f;
   font-size: clamp(1rem, 1.5vw, 1.18rem);
   line-height: 1.85;
+}
+
+.hero-description {
+  max-width: 680px;
+  margin: 2px 0 0;
+  color: #4f4a42;
+  font-size: 0.98rem;
+  line-height: 1.8;
+}
+
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.hero-tags span {
+  border: 1px solid rgba(32, 31, 28, 0.18);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #6d5c47;
+  background: rgba(255, 252, 246, 0.58);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .hero-meta {
@@ -287,6 +314,16 @@ h1 {
 
 .file-input {
   display: none;
+}
+
+.storage-notice {
+  margin: -10px 0 34px;
+  border-left: 2px solid rgba(138, 115, 84, 0.52);
+  padding: 12px 0 12px 16px;
+  color: #5e594f;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  background: rgba(255, 253, 248, 0.28);
 }
 
 .stats-panel {
@@ -1431,6 +1468,22 @@ h1 {
   background: rgba(138, 115, 84, 0.78);
 }
 
+.site-footer {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 72px;
+  padding: 24px 0 0;
+  border-top: 1px solid rgba(32, 31, 28, 0.18);
+  color: #7e7669;
+  font-size: 0.82rem;
+}
+
+.site-footer span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1020px) {
   .hero {
     min-height: auto;
@@ -1505,6 +1558,19 @@ h1 {
 
   .hero-kicker {
     font-size: clamp(3.5rem, 18vw, 6.4rem);
+    overflow-wrap: anywhere;
+  }
+
+  h1 {
+    font-size: clamp(2.15rem, 13vw, 3.6rem);
+  }
+
+  .hero-description {
+    font-size: 0.92rem;
+  }
+
+  .hero-tags span {
+    font-size: 0.74rem;
   }
 
   .hero-meta {
@@ -1526,6 +1592,11 @@ h1 {
 
   .data-tool-actions {
     justify-content: flex-start;
+  }
+
+  .storage-notice {
+    margin-top: -6px;
+    margin-bottom: 28px;
   }
 
   .stats-header {
@@ -1619,5 +1690,12 @@ h1 {
 
   .analysis-block {
     min-height: auto;
+  }
+
+  .site-footer {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 54px;
+    padding-bottom: 18px;
   }
 }
