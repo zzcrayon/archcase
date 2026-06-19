@@ -1,18 +1,13 @@
 import crypto from 'node:crypto'
-import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
 import multer from 'multer'
+import { getStorageBucket, getSupabase } from './supabaseClient.js'
 
 dotenv.config()
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const serverRoot = path.resolve(__dirname, '..')
-const dataFile = path.join(serverRoot, 'data', 'cases.json')
-const uploadsDir = path.join(serverRoot, 'uploads')
 const adminTokens = new Set()
 
 const app = express()
@@ -37,19 +32,9 @@ app.use(
 )
 
 app.use(express.json({ limit: '2mb' }))
-app.use('/uploads', express.static(uploadsDir))
-
-const uploadStorage = multer.diskStorage({
-  destination: uploadsDir,
-  filename(req, file, callback) {
-    const ext = path.extname(file.originalname).toLowerCase()
-    const safeName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`
-    callback(null, safeName)
-  },
-})
 
 const upload = multer({
-  storage: uploadStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024,
   },
@@ -64,22 +49,6 @@ const upload = multer({
     callback(new Error('只支持 jpg、jpeg、png 或 webp 图片'))
   },
 })
-
-const readCases = async () => {
-  try {
-    const fileContent = await fs.readFile(dataFile, 'utf-8')
-    const parsedCases = JSON.parse(fileContent)
-    return Array.isArray(parsedCases) ? parsedCases : []
-  } catch {
-    return []
-  }
-}
-
-const writeCases = async (cases) => {
-  const tempFile = `${dataFile}.tmp`
-  await fs.writeFile(tempFile, JSON.stringify(cases, null, 2), 'utf-8')
-  await fs.rename(tempFile, dataFile)
-}
 
 const normalizeTags = (tags) => {
   if (Array.isArray(tags)) {
@@ -96,8 +65,24 @@ const normalizeTags = (tags) => {
   return []
 }
 
+const normalizeRatings = (ratings = {}) => ({
+  space: Number(ratings.space) || 4,
+  material: Number(ratings.material) || 4,
+  structure: Number(ratings.structure) || 4,
+  site: Number(ratings.site) || 4,
+  inspiration: Number(ratings.inspiration) || 4,
+})
+
+const calculateAverageRating = (ratings = {}) => {
+  const normalizedRatings = normalizeRatings(ratings)
+  const values = Object.values(normalizedRatings)
+  const total = values.reduce((sum, value) => sum + value, 0)
+
+  return Number((total / values.length).toFixed(1))
+}
+
 const normalizeCase = (caseItem) => ({
-  id: String(caseItem.id || Date.now()),
+  id: caseItem.id ? String(caseItem.id) : undefined,
   name: String(caseItem.name || '').trim(),
   architect: String(caseItem.architect || '').trim(),
   city: String(caseItem.city || '').trim(),
@@ -108,8 +93,42 @@ const normalizeCase = (caseItem) => ({
   tags: normalizeTags(caseItem.tags),
   description: String(caseItem.description || '').trim(),
   inspiration: String(caseItem.inspiration || '').trim(),
-  ratings: caseItem.ratings || {},
+  rating: Number(caseItem.rating) || calculateAverageRating(caseItem.ratings),
+  ratings: normalizeRatings(caseItem.ratings),
 })
+
+const toSupabaseCasePayload = (caseItem, { includeId = false } = {}) => {
+  const normalizedCase = normalizeCase(caseItem)
+  const payload = {
+    name: normalizedCase.name,
+    architect: normalizedCase.architect,
+    city: normalizedCase.city,
+    country: normalizedCase.country,
+    type: normalizedCase.type,
+    year: normalizedCase.year,
+    image: normalizedCase.image,
+    tags: normalizedCase.tags,
+    description: normalizedCase.description,
+    inspiration: normalizedCase.inspiration,
+    rating: calculateAverageRating(normalizedCase.ratings),
+    ratings: normalizedCase.ratings,
+  }
+
+  if (includeId && normalizedCase.id) {
+    payload.id = normalizedCase.id
+  }
+
+  return payload
+}
+
+const logServerError = (error) => {
+  console.error('ArchCase API error:', {
+    message: error.message,
+    code: error.code,
+    details: error.details,
+    hint: error.hint,
+  })
+}
 
 const validateCase = (caseItem) => {
   const missingFields = []
@@ -151,8 +170,15 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/cases', async (req, res, next) => {
   try {
-    const cases = await readCases()
-    res.json(cases)
+    const { data, error } = await getSupabase().from('cases').select('*').order('id', {
+      ascending: true,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    res.json((data || []).map(normalizeCase))
   } catch (error) {
     next(error)
   }
@@ -162,7 +188,7 @@ app.post('/api/cases', requireAdmin, async (req, res, next) => {
   try {
     const nextCase = normalizeCase({
       ...req.body,
-      id: req.body.id || Date.now(),
+      id: req.body.id || crypto.randomUUID(),
     })
     const missingFields = validateCase(nextCase)
 
@@ -174,10 +200,17 @@ app.post('/api/cases', requireAdmin, async (req, res, next) => {
       return
     }
 
-    const cases = await readCases()
-    const nextCases = [nextCase, ...cases]
-    await writeCases(nextCases)
-    res.status(201).json(nextCase)
+    const { data, error } = await getSupabase()
+      .from('cases')
+      .insert(toSupabaseCasePayload(nextCase, { includeId: true }))
+      .select()
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    res.status(201).json(normalizeCase(data))
   } catch (error) {
     next(error)
   }
@@ -185,18 +218,9 @@ app.post('/api/cases', requireAdmin, async (req, res, next) => {
 
 app.put('/api/cases/:id', requireAdmin, async (req, res, next) => {
   try {
-    const cases = await readCases()
-    const caseIndex = cases.findIndex((caseItem) => String(caseItem.id) === req.params.id)
-
-    if (caseIndex === -1) {
-      res.status(404).json({ message: '没有找到这个建筑案例' })
-      return
-    }
-
     const updatedCase = normalizeCase({
-      ...cases[caseIndex],
       ...req.body,
-      id: cases[caseIndex].id,
+      id: req.params.id,
     })
     const missingFields = validateCase(updatedCase)
 
@@ -208,9 +232,25 @@ app.put('/api/cases/:id', requireAdmin, async (req, res, next) => {
       return
     }
 
-    const nextCases = cases.map((caseItem, index) => (index === caseIndex ? updatedCase : caseItem))
-    await writeCases(nextCases)
-    res.json(updatedCase)
+    const updatePayload = toSupabaseCasePayload(updatedCase)
+
+    const { data, error } = await getSupabase()
+      .from('cases')
+      .update(updatePayload)
+      .eq('id', req.params.id)
+      .select()
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    if (!data) {
+      res.status(404).json({ message: '没有找到这个建筑案例' })
+      return
+    }
+
+    res.json(normalizeCase(data))
   } catch (error) {
     next(error)
   }
@@ -218,32 +258,57 @@ app.put('/api/cases/:id', requireAdmin, async (req, res, next) => {
 
 app.delete('/api/cases/:id', requireAdmin, async (req, res, next) => {
   try {
-    const cases = await readCases()
-    const nextCases = cases.filter((caseItem) => String(caseItem.id) !== req.params.id)
+    const { data, error } = await getSupabase()
+      .from('cases')
+      .delete()
+      .eq('id', req.params.id)
+      .select('id')
 
-    if (nextCases.length === cases.length) {
+    if (error) {
+      throw error
+    }
+
+    if (!data || data.length === 0) {
       res.status(404).json({ message: '没有找到这个建筑案例' })
       return
     }
 
-    await writeCases(nextCases)
     res.json({ message: '删除成功' })
   } catch (error) {
     next(error)
   }
 })
 
-app.post('/api/upload', requireAdmin, upload.single('image'), (req, res) => {
-  if (!req.file) {
-    res.status(400).json({ message: '请上传图片文件' })
-    return
-  }
+app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ message: '请上传图片文件' })
+      return
+    }
 
-  const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
-  res.status(201).json({
-    url: imageUrl,
-    filename: req.file.filename,
-  })
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`
+    const bucket = getStorageBucket()
+    const filePath = `cases/${filename}`
+    const { error } = await getSupabase().storage.from(bucket).upload(filePath, req.file.buffer, {
+      contentType: req.file.mimetype,
+      upsert: false,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    const { data } = getSupabase().storage.from(bucket).getPublicUrl(filePath)
+
+    res.status(201).json({
+      url: data.publicUrl,
+      filename,
+      path: filePath,
+    })
+  } catch (error) {
+    next(error)
+  }
 })
 
 app.post('/api/admin/login', (req, res) => {
@@ -274,9 +339,12 @@ app.post('/api/admin/login', (req, res) => {
 })
 
 app.use((error, req, res, next) => {
-  console.error(error)
+  logServerError(error)
   res.status(500).json({
     message: error.message || '服务器内部错误',
+    code: error.code,
+    details: error.details,
+    hint: error.hint,
   })
 })
 

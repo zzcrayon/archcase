@@ -9,6 +9,8 @@ import AdminLogin from './components/AdminLogin'
 import { normalizeRatings } from './utils/ratings'
 
 const STORAGE_KEY = 'archcase_cases'
+const STORAGE_VERSION_KEY = 'archcase_data_version'
+const ARCHCASE_DATA_VERSION = '2026-06-19-v2'
 const ADMIN_SESSION_KEY = 'archcase_admin_session'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
@@ -57,6 +59,25 @@ const getSafeImage = (image, fallbackCase) => {
 }
 
 const loadCasesFromStorage = () => {
+  let savedVersion = ''
+
+  try {
+    savedVersion = localStorage.getItem(STORAGE_VERSION_KEY)
+  } catch {
+    return cases.map(normalizeCase)
+  }
+
+  if (savedVersion !== ARCHCASE_DATA_VERSION) {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.setItem(STORAGE_VERSION_KEY, ARCHCASE_DATA_VERSION)
+    } catch {
+      return cases.map(normalizeCase)
+    }
+
+    return cases.map(normalizeCase)
+  }
+
   const savedCases = localStorage.getItem(STORAGE_KEY)
 
   if (!savedCases) {
@@ -136,6 +157,7 @@ function App() {
 
   const persistLocalCache = (nextCases, { silent = false } = {}) => {
     try {
+      localStorage.setItem(STORAGE_VERSION_KEY, ARCHCASE_DATA_VERSION)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCases))
       return true
     } catch (error) {
@@ -419,6 +441,7 @@ function App() {
     }
 
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.setItem(STORAGE_VERSION_KEY, ARCHCASE_DATA_VERSION)
     setStorageError('')
     setIsUsingLocalCache(true)
     setSearchTerm('')
