@@ -5,10 +5,12 @@ function CaseDetailModal({ item, onClose }) {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
   const [hasImageError, setHasImageError] = useState(false)
   const ratings = normalizeRatings(item.ratings)
+  const imageSrc = typeof item.image === 'string' ? item.image.trim() : ''
+  const tags = Array.isArray(item.tags) ? item.tags : []
 
   useEffect(() => {
     setHasImageError(false)
-  }, [item.image])
+  }, [imageSrc])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -73,12 +75,16 @@ function CaseDetailModal({ item, onClose }) {
         <button
           className="detail-image-wrap"
           type="button"
-          onClick={() => setIsImagePreviewOpen(true)}
+          onClick={() => {
+            if (imageSrc && !hasImageError) {
+              setIsImagePreviewOpen(true)
+            }
+          }}
           aria-label={`查看${item.name}大图`}
         >
-          {item.image && !hasImageError ? (
+          {imageSrc && !hasImageError ? (
             <img
-              src={item.image}
+              src={imageSrc}
               alt={`${item.name}建筑详情图片`}
               className="detail-image"
               onError={() => setHasImageError(true)}
@@ -88,7 +94,7 @@ function CaseDetailModal({ item, onClose }) {
               <span>{item.name}</span>
             </div>
           )}
-          {!hasImageError && <span className="detail-image-hint">点击查看大图</span>}
+          {imageSrc && !hasImageError && <span className="detail-image-hint">点击查看大图</span>}
         </button>
 
         <div className="detail-content">
@@ -108,7 +114,7 @@ function CaseDetailModal({ item, onClose }) {
           </dl>
 
           <div className="tag-list detail-tags">
-            {item.tags.map((tag) => (
+            {tags.map((tag) => (
               <span key={tag}>{tag}</span>
             ))}
           </div>
@@ -146,7 +152,7 @@ function CaseDetailModal({ item, onClose }) {
         </div>
       </section>
 
-      {isImagePreviewOpen && !hasImageError && (
+      {isImagePreviewOpen && imageSrc && !hasImageError && (
         <div
           className="image-preview-backdrop"
           onClick={(event) => {
@@ -163,7 +169,7 @@ function CaseDetailModal({ item, onClose }) {
             ×
           </button>
           <img
-            src={item.image}
+            src={imageSrc}
             alt={`${item.name}建筑大图预览`}
             className="image-preview"
             onClick={(event) => event.stopPropagation()}

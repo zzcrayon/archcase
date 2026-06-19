@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { cases, categories } from './data/cases'
 import CaseCard from './components/CaseCard'
 import CaseDetailModal from './components/CaseDetailModal'
@@ -43,6 +43,16 @@ const normalizeCase = (caseItem) => ({
   ratings: normalizeRatings(caseItem.ratings),
 })
 
+const getSafeImage = (image, fallbackCase) => {
+  const nextImage = typeof image === 'string' ? image.trim() : ''
+
+  if (!nextImage || isStoredLocalAssetPath(nextImage)) {
+    return normalizeImage(fallbackCase)
+  }
+
+  return nextImage
+}
+
 const loadCasesFromStorage = () => {
   const savedCases = localStorage.getItem(STORAGE_KEY)
 
@@ -65,15 +75,27 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCase, setEditingCase] = useState(null)
   const [selectedCase, setSelectedCase] = useState(null)
+  const [storageError, setStorageError] = useState('')
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allCases))
-  }, [allCases])
+  const persistCases = (nextCases) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCases))
+      setStorageError('')
+      return true
+    } catch (error) {
+      console.error('保存到 localStorage 失败：', error)
+      const message = '保存失败：图片或案例数据可能过大。系统已保留原来的案例数据，请更换图片后再试。'
+      setStorageError(message)
+      window.alert(message)
+      return false
+    }
+  }
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase()
 
   const filteredCases = allCases.filter((item) => {
     const matchesCategory = activeCategory === '全部' || item.type === activeCategory
+    const tags = Array.isArray(item.tags) ? item.tags : []
 
     const searchableText = [
       item.name,
@@ -83,7 +105,7 @@ function App() {
       item.type,
       item.description,
       item.inspiration,
-      item.tags.join(' '),
+      tags.join(' '),
     ]
       .join(' ')
       .toLowerCase()
@@ -111,8 +133,8 @@ function App() {
   }
 
   const handleSaveCase = (caseData) => {
-    setAllCases((currentCases) => {
-      const fallbackImage = currentCases[0]?.image || cases[0].image
+    const getNextCases = (currentCases) => {
+      const fallbackImage = normalizeImage(currentCases[0] || cases[0])
 
       if (editingCase) {
         return currentCases.map((item) =>
@@ -120,7 +142,7 @@ function App() {
             ? {
                 ...item,
                 ...caseData,
-                image: caseData.image || item.image || fallbackImage,
+                image: getSafeImage(caseData.image, { ...item, image: item.image || fallbackImage }),
                 ratings: normalizeRatings(caseData.ratings),
               }
             : item,
@@ -132,12 +154,19 @@ function App() {
         {
           ...caseData,
           id: Date.now(),
-          image: caseData.image || fallbackImage,
+          image: getSafeImage(caseData.image, caseData),
           ratings: normalizeRatings(caseData.ratings),
         },
       ]
-    })
+    }
 
+    const nextCases = getNextCases(allCases)
+
+    if (!persistCases(nextCases)) {
+      return
+    }
+
+    setAllCases(nextCases)
     closeModal()
   }
 
@@ -148,7 +177,13 @@ function App() {
       return
     }
 
-    setAllCases((currentCases) => currentCases.filter((item) => item.id !== caseId))
+    const nextCases = allCases.filter((item) => item.id !== caseId)
+
+    if (!persistCases(nextCases)) {
+      return
+    }
+
+    setAllCases(nextCases)
   }
 
   const handleImportCases = (importedCases) => {
@@ -159,6 +194,10 @@ function App() {
         id: item.id ?? importedAt + index,
       }),
     )
+
+    if (!persistCases(normalizedCases)) {
+      return
+    }
 
     setSelectedCase(null)
     setEditingCase(null)
@@ -174,6 +213,7 @@ function App() {
     }
 
     localStorage.removeItem(STORAGE_KEY)
+    setStorageError('')
     setSearchTerm('')
     setActiveCategory('全部')
     setSelectedCase(null)
@@ -252,6 +292,12 @@ function App() {
         当前版本使用浏览器本地存储，新增和编辑的数据仅保存在当前设备，请使用 JSON
         导出功能备份数据。
       </section>
+
+      {storageError && (
+        <section className="storage-notice storage-warning" aria-live="polite">
+          {storageError}
+        </section>
+      )}
 
       <StatsPanel cases={allCases} categories={categories} />
 

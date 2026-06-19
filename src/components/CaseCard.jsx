@@ -5,10 +5,12 @@ function CaseCard({ item, displayIndex, onDelete, onEdit, onView }) {
   const [hasImageError, setHasImageError] = useState(false)
   const displayNumber = String(displayIndex + 1).padStart(2, '0')
   const averageRating = formatAverageRating(item.ratings)
+  const imageSrc = typeof item.image === 'string' ? item.image.trim() : ''
+  const tags = Array.isArray(item.tags) ? item.tags : []
 
   useEffect(() => {
     setHasImageError(false)
-  }, [item.image])
+  }, [imageSrc])
 
   const handleKeyDown = (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -36,9 +38,9 @@ function CaseCard({ item, displayIndex, onDelete, onEdit, onView }) {
       onKeyDown={handleKeyDown}
     >
       <div className="case-image-wrap">
-        {item.image && !hasImageError ? (
+        {imageSrc && !hasImageError ? (
           <img
-            src={item.image}
+            src={imageSrc}
             alt={`${item.name}建筑图片`}
             className="case-image"
             onError={() => setHasImageError(true)}
@@ -73,7 +75,7 @@ function CaseCard({ item, displayIndex, onDelete, onEdit, onView }) {
         </dl>
 
         <div className="tag-list">
-          {item.tags.map((tag) => (
+          {tags.map((tag) => (
             <span key={tag}>{tag}</span>
           ))}
         </div>

@@ -1,5 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DEFAULT_RATINGS, RATING_FIELDS, normalizeRatings } from '../utils/ratings'
+
+const MAX_UPLOAD_IMAGE_SIZE = 1.5 * 1024 * 1024
+const MAX_IMAGE_EDGE = 1600
+const IMAGE_QUALITY = 0.75
 
 const emptyFormData = {
   name: '',
@@ -35,15 +39,96 @@ const createFormData = (initialCase) => {
   }
 }
 
+const loadImageFromFile = (file) =>
+  new Promise((resolve, reject) => {
+    const image = new Image()
+    const imageUrl = URL.createObjectURL(file)
+
+    image.onload = () => {
+      URL.revokeObjectURL(imageUrl)
+      resolve(image)
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(imageUrl)
+      reject(new Error('图片加载失败'))
+    }
+
+    image.src = imageUrl
+  })
+
+const createCompressedImageBlob = async (file) => {
+  const image = await loadImageFromFile(file)
+  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight))
+  const width = Math.round(image.naturalWidth * scale)
+  const height = Math.round(image.naturalHeight * scale)
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  canvas.width = width
+  canvas.height = height
+
+  if (!context) {
+    throw new Error('浏览器不支持图片压缩')
+  }
+
+  context.fillStyle = '#f6f1e8'
+  context.fillRect(0, 0, width, height)
+  context.drawImage(image, 0, 0, width, height)
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob)
+          return
+        }
+
+        reject(new Error('图片压缩失败'))
+      },
+      'image/jpeg',
+      IMAGE_QUALITY,
+    )
+  })
+}
+
+const readBlobAsDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      const imageData = typeof reader.result === 'string' ? reader.result : ''
+
+      if (!imageData.startsWith('data:image/')) {
+        reject(new Error('图片读取格式不正确'))
+        return
+      }
+
+      resolve(imageData)
+    }
+
+    reader.onerror = () => {
+      reject(new Error('图片读取失败'))
+    }
+
+    reader.readAsDataURL(blob)
+  })
+
 function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
   const [formData, setFormData] = useState(() => createFormData(initialCase))
   const [errors, setErrors] = useState({})
   const [uploadedImage, setUploadedImage] = useState('')
   const [uploadedImageName, setUploadedImageName] = useState('')
+  const [previewImageError, setPreviewImageError] = useState(false)
+  const [isCompressingImage, setIsCompressingImage] = useState(false)
 
   const isEditing = Boolean(initialCase)
   const typeOptions = categories.filter((category) => category !== '全部')
-  const previewImage = uploadedImage || formData.image.trim()
+  const previewImage = uploadedImage || (typeof formData.image === 'string' ? formData.image.trim() : '')
+
+  useEffect(() => {
+    setPreviewImageError(false)
+  }, [previewImage])
 
   const updateField = (field, value) => {
     setFormData((currentData) => ({
@@ -62,13 +147,17 @@ function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
     }))
   }
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
 
     if (!file) {
       return
     }
+
+    setUploadedImage('')
+    setUploadedImageName('')
+    setPreviewImageError(false)
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
 
@@ -77,18 +166,24 @@ function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
       return
     }
 
-    const reader = new FileReader()
+    setIsCompressingImage(true)
 
-    reader.onload = () => {
-      setUploadedImage(String(reader.result))
-      setUploadedImageName(file.name)
+    try {
+      const compressedBlob = await createCompressedImageBlob(file)
+
+      if (compressedBlob.size > MAX_UPLOAD_IMAGE_SIZE) {
+        window.alert('图片仍然过大，请更换图片或手动压缩后再上传')
+        return
+      }
+
+      const imageData = await readBlobAsDataUrl(compressedBlob)
+      setUploadedImage(imageData)
+      setUploadedImageName(`${file.name}（已自动压缩）`)
+    } catch {
+      window.alert('图片处理失败，请重新选择图片')
+    } finally {
+      setIsCompressingImage(false)
     }
-
-    reader.onerror = () => {
-      window.alert('图片读取失败，请重新选择图片')
-    }
-
-    reader.readAsDataURL(file)
   }
 
   const validateForm = () => {
@@ -118,6 +213,11 @@ function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
     event.preventDefault()
 
     if (!validateForm()) {
+      return
+    }
+
+    if (isCompressingImage) {
+      window.alert('图片正在压缩中，请稍等一下再保存')
       return
     }
 
@@ -243,17 +343,22 @@ function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
           <div className="image-upload-field">
             <div className="image-upload-head">
               <span>上传本地图片</span>
-              <small>建议上传压缩后的图片，避免文件过大。</small>
+              <small>选择后会自动压缩图片，再保存到本地。</small>
             </div>
             <label className="image-upload-control">
               <input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handleImageUpload} />
               <span>选择图片</span>
             </label>
             {uploadedImageName && <p className="upload-file-name">已选择：{uploadedImageName}</p>}
+            {isCompressingImage && <p className="upload-file-name">正在压缩图片，请稍等...</p>}
             {uploadedImage && <p className="upload-priority">已上传本地图片，提交时将优先使用它。</p>}
-            <div className={previewImage ? 'image-preview-box has-image' : 'image-preview-box'}>
-              {previewImage ? (
-                <img src={previewImage} alt="案例图片预览" />
+            <div className={previewImage && !previewImageError ? 'image-preview-box has-image' : 'image-preview-box'}>
+              {previewImage && !previewImageError ? (
+                <img
+                  src={previewImage}
+                  alt="案例图片预览"
+                  onError={() => setPreviewImageError(true)}
+                />
               ) : (
                 <span>暂无图片预览</span>
               )}
@@ -315,7 +420,7 @@ function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
             <button className="secondary-button" type="button" onClick={onClose}>
               取消
             </button>
-            <button className="primary-button" type="submit">
+            <button className="primary-button" type="submit" disabled={isCompressingImage}>
               {isEditing ? '保存' : '提交'}
             </button>
           </div>
