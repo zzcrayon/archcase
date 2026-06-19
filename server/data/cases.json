@@ -7,7 +7,7 @@
     "country": "法国",
     "type": "文化建筑",
     "year": "1955",
-    "image": "http://localhost:3001/uploads/1781869965649-258fee41bf20d882.jpg",
+    "image": "/cases/ronchamp.jpg",
     "tags": [
       "雕塑感体量",
       "宗教空间",
@@ -31,7 +31,7 @@
     "country": "日本",
     "type": "文化建筑",
     "year": "1989",
-    "image": "http://localhost:3001/uploads/1781870203301-fbdbf28438ca871a.png",
+    "image": "/cases/church-of-light.png",
     "tags": [
       "清水混凝土",
       "十字光缝",
@@ -55,7 +55,7 @@
     "country": "中国",
     "type": "文化建筑",
     "year": "2008",
-    "image": "http://localhost:3001/uploads/1781870210219-8544d255585a7a3b.jpg",
+    "image": "/cases/ningbo-museum.jpg",
     "tags": [
       "瓦爿墙",
       "地域材料",
@@ -79,7 +79,7 @@
     "country": "美国",
     "type": "住宅",
     "year": "1939",
-    "image": "http://localhost:3001/uploads/1781870216483-9654073cb4b61831.jpg",
+    "image": "/cases/fallingwater.jpg",
     "tags": [
       "有机建筑",
       "悬挑结构",
@@ -103,7 +103,7 @@
     "country": "法国",
     "type": "文化建筑",
     "year": "1977",
-    "image": "http://localhost:3001/uploads/1781870221963-7bf448a5dbf83730.jpg",
+    "image": "/cases/pompidou.jpg",
     "tags": [
       "高技派",
       "外露结构",
@@ -127,7 +127,7 @@
     "country": "法国",
     "type": "住宅",
     "year": "1931",
-    "image": "http://localhost:3001/uploads/1781870228678-acc53cdd833a6bca.jpg",
+    "image": "/cases/villa-savoye.jpg",
     "tags": [
       "现代主义",
       "底层架空",
@@ -151,7 +151,7 @@
     "country": "美国",
     "type": "文化建筑",
     "year": "1972",
-    "image": "http://localhost:3001/uploads/1781870235956-9a5ff0cb2dab24fa.png",
+    "image": "/cases/kimbell.png",
     "tags": [
       "拱形屋顶",
       "漫射天光",
@@ -175,7 +175,7 @@
     "country": "葡萄牙",
     "type": "景观建筑",
     "year": "1966",
-    "image": "http://localhost:3001/uploads/1781870243572-30a20a4f3f11bd39.jpeg",
+    "image": "/cases/leca-pool.jpeg",
     "tags": [
       "海岸场地",
       "低调介入",

@@ -1,9 +1,3 @@
-import residentialImage from '../assets/cases/residential.png'
-import museumImage from '../assets/cases/museum.png'
-import commercialImage from '../assets/cases/commercial.png'
-import heritageImage from '../assets/cases/heritage.png'
-import landscapeImage from '../assets/cases/landscape.png'
-
 export const categories = [
   '全部',
   '住宅',
@@ -23,7 +17,7 @@ export const cases = [
     country: '法国',
     type: '文化建筑',
     year: '1955',
-    image: museumImage,
+    image: '/cases/ronchamp.jpg',
     tags: ['雕塑感体量', '宗教空间', '自然采光'],
     ratings: {
       space: 5,
@@ -44,7 +38,7 @@ export const cases = [
     country: '日本',
     type: '文化建筑',
     year: '1989',
-    image: heritageImage,
+    image: '/cases/church-of-light.png',
     tags: ['清水混凝土', '十字光缝', '极简空间'],
     ratings: {
       space: 5,
@@ -65,7 +59,7 @@ export const cases = [
     country: '中国',
     type: '文化建筑',
     year: '2008',
-    image: heritageImage,
+    image: '/cases/ningbo-museum.jpg',
     tags: ['瓦爿墙', '地域材料', '山体意象'],
     ratings: {
       space: 4,
@@ -86,7 +80,7 @@ export const cases = [
     country: '美国',
     type: '住宅',
     year: '1939',
-    image: landscapeImage,
+    image: '/cases/fallingwater.jpg',
     tags: ['有机建筑', '悬挑结构', '自然融合'],
     ratings: {
       space: 5,
@@ -107,7 +101,7 @@ export const cases = [
     country: '法国',
     type: '文化建筑',
     year: '1977',
-    image: commercialImage,
+    image: '/cases/pompidou.jpg',
     tags: ['高技派', '外露结构', '公共广场'],
     ratings: {
       space: 4,
@@ -128,7 +122,7 @@ export const cases = [
     country: '法国',
     type: '住宅',
     year: '1931',
-    image: residentialImage,
+    image: '/cases/villa-savoye.jpg',
     tags: ['现代主义', '底层架空', '屋顶花园'],
     ratings: {
       space: 5,
@@ -149,7 +143,7 @@ export const cases = [
     country: '美国',
     type: '文化建筑',
     year: '1972',
-    image: museumImage,
+    image: '/cases/kimbell.png',
     tags: ['拱形屋顶', '漫射天光', '展览空间'],
     ratings: {
       space: 5,
@@ -170,7 +164,7 @@ export const cases = [
     country: '葡萄牙',
     type: '景观建筑',
     year: '1966',
-    image: landscapeImage,
+    image: '/cases/leca-pool.jpeg',
     tags: ['海岸场地', '低调介入', '地形整合'],
     ratings: {
       space: 4,
