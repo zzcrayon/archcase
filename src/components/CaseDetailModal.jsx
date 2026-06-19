@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { RATING_FIELDS, normalizeRatings, renderRatingStars } from '../utils/ratings'
 
-function CaseDetailModal({ item, onClose }) {
+function CaseDetailModal({ item, fallbackImage, onClose }) {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
-  const [hasImageError, setHasImageError] = useState(false)
+  const [hasPrimaryImageError, setHasPrimaryImageError] = useState(false)
+  const [hasFallbackImageError, setHasFallbackImageError] = useState(false)
   const ratings = normalizeRatings(item.ratings)
   const imageSrc = typeof item.image === 'string' ? item.image.trim() : ''
+  const fallbackImageSrc = typeof fallbackImage === 'string' ? fallbackImage.trim() : ''
+  const displayImageSrc = hasPrimaryImageError || !imageSrc ? fallbackImageSrc : imageSrc
   const tags = Array.isArray(item.tags) ? item.tags : []
 
   useEffect(() => {
-    setHasImageError(false)
-  }, [imageSrc])
+    setHasPrimaryImageError(false)
+    setHasFallbackImageError(false)
+  }, [imageSrc, fallbackImageSrc])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -76,25 +80,34 @@ function CaseDetailModal({ item, onClose }) {
           className="detail-image-wrap"
           type="button"
           onClick={() => {
-            if (imageSrc && !hasImageError) {
+            if (displayImageSrc && !hasFallbackImageError) {
               setIsImagePreviewOpen(true)
             }
           }}
           aria-label={`查看${item.name}大图`}
         >
-          {imageSrc && !hasImageError ? (
+          {displayImageSrc && !hasFallbackImageError ? (
             <img
-              src={imageSrc}
+              src={displayImageSrc}
               alt={`${item.name}建筑详情图片`}
               className="detail-image"
-              onError={() => setHasImageError(true)}
+              onError={() => {
+                if (!hasPrimaryImageError && imageSrc && fallbackImageSrc && imageSrc !== fallbackImageSrc) {
+                  setHasPrimaryImageError(true)
+                  return
+                }
+
+                setHasFallbackImageError(true)
+              }}
             />
           ) : (
             <div className="detail-image-placeholder">
               <span>{item.name}</span>
             </div>
           )}
-          {imageSrc && !hasImageError && <span className="detail-image-hint">点击查看大图</span>}
+          {displayImageSrc && !hasFallbackImageError && (
+            <span className="detail-image-hint">点击查看大图</span>
+          )}
         </button>
 
         <div className="detail-content">
@@ -152,7 +165,7 @@ function CaseDetailModal({ item, onClose }) {
         </div>
       </section>
 
-      {isImagePreviewOpen && imageSrc && !hasImageError && (
+      {isImagePreviewOpen && displayImageSrc && !hasFallbackImageError && (
         <div
           className="image-preview-backdrop"
           onClick={(event) => {
@@ -169,7 +182,7 @@ function CaseDetailModal({ item, onClose }) {
             ×
           </button>
           <img
-            src={imageSrc}
+            src={displayImageSrc}
             alt={`${item.name}建筑大图预览`}
             className="image-preview"
             onClick={(event) => event.stopPropagation()}

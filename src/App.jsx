@@ -550,6 +550,7 @@ function App() {
             <CaseCard
               item={item}
               displayIndex={index}
+              fallbackImage={getDefaultImageForCase(item)}
               onDelete={handleDeleteCase}
               onEdit={openEditModal}
               onView={setSelectedCase}
@@ -583,7 +584,11 @@ function App() {
       )}
 
       {selectedCase && (
-        <CaseDetailModal item={selectedCase} onClose={() => setSelectedCase(null)} />
+        <CaseDetailModal
+          item={selectedCase}
+          fallbackImage={getDefaultImageForCase(selectedCase)}
+          onClose={() => setSelectedCase(null)}
+        />
       )}
 
       <footer className="site-footer">
