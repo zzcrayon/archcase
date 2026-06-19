@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { formatAverageRating } from '../utils/ratings'
 
-function CaseCard({ item, displayIndex, onDelete, onEdit, onView }) {
+function CaseCard({ item, displayIndex, onDelete, onEdit, onView, isAdmin }) {
   const [hasImageError, setHasImageError] = useState(false)
   const displayNumber = String(displayIndex + 1).padStart(2, '0')
   const averageRating = formatAverageRating(item.ratings)
@@ -88,14 +88,16 @@ function CaseCard({ item, displayIndex, onDelete, onEdit, onView }) {
         <p className="case-description">{item.description}</p>
         <p className="case-inspiration">{item.inspiration}</p>
 
-        <div className="case-actions">
-          <button type="button" onClick={handleEdit}>
-            编辑
-          </button>
-          <button type="button" onClick={handleDelete}>
-            删除
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="case-actions">
+            <button type="button" onClick={handleEdit}>
+              编辑
+            </button>
+            <button type="button" onClick={handleDelete}>
+              删除
+            </button>
+          </div>
+        )}
       </div>
     </article>
   )

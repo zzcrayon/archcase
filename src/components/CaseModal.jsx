@@ -114,7 +114,7 @@ const readBlobAsDataUrl = (blob) =>
     reader.readAsDataURL(blob)
   })
 
-function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
+function CaseModal({ categories, initialCase, onClose, onSaveCase, onUploadImage }) {
   const [formData, setFormData] = useState(() => createFormData(initialCase))
   const [errors, setErrors] = useState({})
   const [uploadedImage, setUploadedImage] = useState('')
@@ -176,11 +176,14 @@ function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
         return
       }
 
-      const imageData = await readBlobAsDataUrl(compressedBlob)
-      setUploadedImage(imageData)
+      const imageUrl = onUploadImage
+        ? await onUploadImage(compressedBlob, file.name)
+        : await readBlobAsDataUrl(compressedBlob)
+
+      setUploadedImage(imageUrl)
       setUploadedImageName(`${file.name}（已自动压缩）`)
     } catch {
-      window.alert('图片处理失败，请重新选择图片')
+      window.alert('图片处理或上传失败，请检查后端服务后重试')
     } finally {
       setIsCompressingImage(false)
     }
@@ -351,7 +354,7 @@ function CaseModal({ categories, initialCase, onClose, onSaveCase }) {
             </label>
             {uploadedImageName && <p className="upload-file-name">已选择：{uploadedImageName}</p>}
             {isCompressingImage && <p className="upload-file-name">正在压缩图片，请稍等...</p>}
-            {uploadedImage && <p className="upload-priority">已上传本地图片，提交时将优先使用它。</p>}
+            {uploadedImage && <p className="upload-priority">图片已上传，提交时将优先使用它。</p>}
             <div className={previewImage && !previewImageError ? 'image-preview-box has-image' : 'image-preview-box'}>
               {previewImage && !previewImageError ? (
                 <img

@@ -1,5 +1,7 @@
 node_modules
 dist
 .env
+server/.env
 .env.local
+server/uploads/
 npm-debug.log*

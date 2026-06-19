@@ -273,6 +273,89 @@ h1 {
   border-bottom: 1px solid rgba(32, 31, 28, 0.16);
 }
 
+.admin-login {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+  padding: 18px 0;
+  border-top: 1px solid rgba(32, 31, 28, 0.12);
+  border-bottom: 1px solid rgba(32, 31, 28, 0.12);
+}
+
+.admin-login .eyebrow {
+  margin: 0 0 8px;
+}
+
+.admin-login h2 {
+  margin: 0;
+  color: #201f1c;
+  font-size: clamp(1rem, 1.5vw, 1.28rem);
+  font-weight: 500;
+}
+
+.admin-login-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #6d675f;
+  font-size: 0.82rem;
+}
+
+.admin-login-form {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-login input {
+  width: 138px;
+  min-height: 42px;
+  border: 1px solid rgba(32, 31, 28, 0.16);
+  border-radius: 999px;
+  padding: 0 14px;
+  color: #201f1c;
+  background: rgba(255, 252, 246, 0.68);
+  outline: none;
+}
+
+.admin-login input:focus {
+  border-color: rgba(32, 31, 28, 0.42);
+  background: #fffdf8;
+}
+
+.admin-login button {
+  min-height: 42px;
+  border: 1px solid rgba(32, 31, 28, 0.2);
+  border-radius: 999px;
+  padding: 0 16px;
+  color: #514b42;
+  background: rgba(255, 252, 246, 0.62);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    background 180ms ease;
+}
+
+.admin-login button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(32, 31, 28, 0.42);
+  color: #201f1c;
+  background: #fffdf8;
+}
+
+.admin-login button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
 .data-tools .eyebrow {
   margin: 0 0 8px;
 }
@@ -1598,6 +1681,20 @@ h1 {
   .data-tools {
     display: grid;
     align-items: start;
+  }
+
+  .admin-login {
+    display: grid;
+    align-items: start;
+  }
+
+  .admin-login-actions,
+  .admin-login-form {
+    justify-content: flex-start;
+  }
+
+  .admin-login input {
+    width: min(100%, 180px);
   }
 
   .data-tool-actions {

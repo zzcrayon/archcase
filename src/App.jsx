@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cases, categories } from './data/cases'
 import CaseCard from './components/CaseCard'
 import CaseDetailModal from './components/CaseDetailModal'
 import DataTools from './components/DataTools'
 import CaseModal from './components/CaseModal'
 import StatsPanel from './components/StatsPanel'
+import AdminLogin from './components/AdminLogin'
 import { normalizeRatings } from './utils/ratings'
 
 const STORAGE_KEY = 'archcase_cases'
+const ADMIN_SESSION_KEY = 'archcase_admin_session'
+const API_BASE_URL = 'http://localhost:3001/api'
 
 const defaultImageById = new Map(cases.map((caseItem) => [caseItem.id, caseItem.image]))
 const defaultImageByName = new Map(cases.map((caseItem) => [caseItem.name, caseItem.image]))
@@ -68,6 +71,57 @@ const loadCasesFromStorage = () => {
   }
 }
 
+const requestJson = async (path, options = {}) => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+    },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || '请求失败')
+  }
+
+  return response.json()
+}
+
+const uploadImageFile = async (imageBlob, fileName, adminToken) => {
+  if (!adminToken) {
+    throw new Error('请先登录管理员账号')
+  }
+
+  const formData = new FormData()
+  formData.append('image', imageBlob, fileName)
+
+  const response = await fetch(`${API_BASE_URL}/upload`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || '图片上传失败')
+  }
+
+  const data = await response.json()
+  return data.url
+}
+
+const loadAdminSession = () => {
+  try {
+    const savedSession = sessionStorage.getItem(ADMIN_SESSION_KEY)
+    return savedSession ? JSON.parse(savedSession) : null
+  } catch {
+    return null
+  }
+}
+
 function App() {
   const [allCases, setAllCases] = useState(loadCasesFromStorage)
   const [searchTerm, setSearchTerm] = useState('')
@@ -76,20 +130,64 @@ function App() {
   const [editingCase, setEditingCase] = useState(null)
   const [selectedCase, setSelectedCase] = useState(null)
   const [storageError, setStorageError] = useState('')
+  const [isUsingLocalCache, setIsUsingLocalCache] = useState(false)
+  const [adminSession, setAdminSession] = useState(loadAdminSession)
+  const isAdmin = Boolean(adminSession?.token)
 
-  const persistCases = (nextCases) => {
+  const persistLocalCache = (nextCases, { silent = false } = {}) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCases))
-      setStorageError('')
       return true
     } catch (error) {
       console.error('保存到 localStorage 失败：', error)
       const message = '保存失败：图片或案例数据可能过大。系统已保留原来的案例数据，请更换图片后再试。'
-      setStorageError(message)
-      window.alert(message)
+
+      if (!silent) {
+        setStorageError(message)
+        window.alert(message)
+      }
+
       return false
     }
   }
+
+  useEffect(() => {
+    let ignore = false
+
+    const loadCasesFromApi = async () => {
+      try {
+        const apiCases = await requestJson('/cases')
+        const normalizedCases = Array.isArray(apiCases)
+          ? apiCases.map(normalizeCase)
+          : cases.map(normalizeCase)
+
+        if (ignore) {
+          return
+        }
+
+        setAllCases(normalizedCases)
+        persistLocalCache(normalizedCases, { silent: true })
+        setIsUsingLocalCache(false)
+        setStorageError('')
+      } catch (error) {
+        console.error('连接后端失败：', error)
+
+        if (ignore) {
+          return
+        }
+
+        setAllCases(loadCasesFromStorage())
+        setIsUsingLocalCache(true)
+        setStorageError('后端连接失败，当前使用本地缓存数据')
+      }
+    }
+
+    loadCasesFromApi()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase()
 
@@ -117,11 +215,21 @@ function App() {
   })
 
   const openAddModal = () => {
+    if (!isAdmin) {
+      window.alert('请先登录管理员账号')
+      return
+    }
+
     setEditingCase(null)
     setIsModalOpen(true)
   }
 
   const openEditModal = (caseItem) => {
+    if (!isAdmin) {
+      window.alert('请先登录管理员账号')
+      return
+    }
+
     setSelectedCase(null)
     setEditingCase(caseItem)
     setIsModalOpen(true)
@@ -132,7 +240,7 @@ function App() {
     setIsModalOpen(false)
   }
 
-  const handleSaveCase = (caseData) => {
+  const buildNextCases = (caseData) => {
     const getNextCases = (currentCases) => {
       const fallbackImage = normalizeImage(currentCases[0] || cases[0])
 
@@ -160,17 +268,85 @@ function App() {
       ]
     }
 
-    const nextCases = getNextCases(allCases)
+    return getNextCases(allCases).map(normalizeCase)
+  }
 
-    if (!persistCases(nextCases)) {
+  const handleSaveCase = async (caseData) => {
+    if (!isAdmin) {
+      window.alert('请先登录管理员账号')
       return
     }
 
-    setAllCases(nextCases)
-    closeModal()
+    if (isUsingLocalCache) {
+      const nextCases = buildNextCases(caseData)
+
+      if (!persistLocalCache(nextCases)) {
+        return
+      }
+
+      setAllCases(nextCases)
+      closeModal()
+      return
+    }
+
+    try {
+      if (editingCase) {
+        const fallbackImage = normalizeImage(editingCase)
+        const payload = {
+          ...caseData,
+          image: getSafeImage(caseData.image, { ...editingCase, image: editingCase.image || fallbackImage }),
+          ratings: normalizeRatings(caseData.ratings),
+        }
+        const updatedCase = normalizeCase(
+          await requestJson(`/cases/${editingCase.id}`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${adminSession.token}`,
+            },
+            body: JSON.stringify(payload),
+          }),
+        )
+        const nextCases = allCases.map((item) => (item.id === editingCase.id ? updatedCase : item))
+
+        setAllCases(nextCases)
+        persistLocalCache(nextCases, { silent: true })
+        setStorageError('')
+        closeModal()
+        return
+      }
+
+      const payload = {
+        ...caseData,
+        image: getSafeImage(caseData.image, caseData),
+        ratings: normalizeRatings(caseData.ratings),
+      }
+      const createdCase = normalizeCase(
+        await requestJson('/cases', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${adminSession.token}`,
+          },
+          body: JSON.stringify(payload),
+        }),
+      )
+      const nextCases = [createdCase, ...allCases]
+
+      setAllCases(nextCases)
+      persistLocalCache(nextCases, { silent: true })
+      setStorageError('')
+      closeModal()
+    } catch (error) {
+      console.error('保存案例失败：', error)
+      window.alert('保存失败，请检查后端服务是否正常运行')
+    }
   }
 
-  const handleDeleteCase = (caseId) => {
+  const handleDeleteCase = async (caseId) => {
+    if (!isAdmin) {
+      window.alert('请先登录管理员账号')
+      return
+    }
+
     const shouldDelete = window.confirm('确定要删除这个建筑案例吗？')
 
     if (!shouldDelete) {
@@ -179,14 +355,37 @@ function App() {
 
     const nextCases = allCases.filter((item) => item.id !== caseId)
 
-    if (!persistCases(nextCases)) {
+    if (isUsingLocalCache) {
+      if (!persistLocalCache(nextCases)) {
+        return
+      }
+
+      setAllCases(nextCases)
       return
     }
 
-    setAllCases(nextCases)
+    try {
+      await requestJson(`/cases/${caseId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${adminSession.token}`,
+        },
+      })
+      setAllCases(nextCases)
+      persistLocalCache(nextCases, { silent: true })
+      setStorageError('')
+    } catch (error) {
+      console.error('删除案例失败：', error)
+      window.alert('删除失败，请检查后端服务是否正常运行')
+    }
   }
 
   const handleImportCases = (importedCases) => {
+    if (!isAdmin) {
+      window.alert('请先登录管理员账号')
+      return
+    }
+
     const importedAt = Date.now()
     const normalizedCases = importedCases.map((item, index) =>
       normalizeCase({
@@ -195,10 +394,12 @@ function App() {
       }),
     )
 
-    if (!persistCases(normalizedCases)) {
+    if (!persistLocalCache(normalizedCases)) {
       return
     }
 
+    setIsUsingLocalCache(true)
+    setStorageError('导入数据已保存到本地缓存，后续可再接入后端批量导入接口')
     setSelectedCase(null)
     setEditingCase(null)
     setIsModalOpen(false)
@@ -206,6 +407,11 @@ function App() {
   }
 
   const handleResetCases = () => {
+    if (!isAdmin) {
+      window.alert('请先登录管理员账号')
+      return
+    }
+
     const shouldReset = window.confirm('重置默认案例会清除当前本地保存的数据，是否继续？')
 
     if (!shouldReset) {
@@ -214,12 +420,41 @@ function App() {
 
     localStorage.removeItem(STORAGE_KEY)
     setStorageError('')
+    setIsUsingLocalCache(true)
     setSearchTerm('')
     setActiveCategory('全部')
     setSelectedCase(null)
     setEditingCase(null)
     setIsModalOpen(false)
     setAllCases(cases.map(normalizeCase))
+  }
+
+  const handleAdminLogin = async (loginData) => {
+    try {
+      const loginResult = await requestJson('/admin/login', {
+        method: 'POST',
+        body: JSON.stringify(loginData),
+      })
+      const nextSession = {
+        token: loginResult.token,
+        username: loginResult.user?.username || loginData.username,
+      }
+
+      sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(nextSession))
+      setAdminSession(nextSession)
+      return nextSession
+    } catch (error) {
+      console.error('管理员登录失败：', error)
+      window.alert('管理员登录失败，请检查用户名和密码')
+      throw error
+    }
+  }
+
+  const handleAdminLogout = () => {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY)
+    setAdminSession(null)
+    setEditingCase(null)
+    setIsModalOpen(false)
   }
 
   return (
@@ -286,7 +521,15 @@ function App() {
         </div>
       </section>
 
-      <DataTools cases={allCases} onImportCases={handleImportCases} onResetCases={handleResetCases} />
+      <AdminLogin
+        adminSession={adminSession}
+        onLogin={handleAdminLogin}
+        onLogout={handleAdminLogout}
+      />
+
+      {isAdmin && (
+        <DataTools cases={allCases} onImportCases={handleImportCases} onResetCases={handleResetCases} />
+      )}
 
       <section className="storage-notice" aria-label="本地存储提示">
         当前版本使用浏览器本地存储，新增和编辑的数据仅保存在当前设备，请使用 JSON
@@ -310,6 +553,7 @@ function App() {
               onDelete={handleDeleteCase}
               onEdit={openEditModal}
               onView={setSelectedCase}
+              isAdmin={isAdmin}
               key={item.id}
             />
           ))}
@@ -320,9 +564,11 @@ function App() {
         </section>
       )}
 
-      <button className="add-button" type="button" onClick={openAddModal}>
-        添加案例
-      </button>
+      {isAdmin && (
+        <button className="add-button" type="button" onClick={openAddModal}>
+          添加案例
+        </button>
+      )}
 
       {isModalOpen && (
         <CaseModal
@@ -330,6 +576,9 @@ function App() {
           initialCase={editingCase}
           onClose={closeModal}
           onSaveCase={handleSaveCase}
+          onUploadImage={(imageBlob, fileName) =>
+            uploadImageFile(imageBlob, fileName, adminSession?.token)
+          }
         />
       )}
 
