@@ -6,6 +6,8 @@
 
 ArchCase 是一个面向建筑案例整理与作品集展示的前后端项目，使用 React + Vite 构建前端界面，使用 Node.js + Express 提供后端 API。项目围绕“公共展示 + 管理员编辑”的产品逻辑设计：普通访客可以浏览案例、搜索筛选和查看详情；管理员登录后可以新增、编辑、删除案例，并上传建筑图片。
 
+说明：当前线上地址主要是前端展示版。如果要体验完整的新增、编辑、删除、上传图片和管理员登录功能，需要同时部署后端服务，或者在本地启动 `server` 后端。
+
 这个项目适合用于产品经理实习作品集、AI Coding 实践复盘、前端项目展示和建筑学学生的案例资料管理展示。
 
 ## 项目截图
@@ -99,7 +101,23 @@ ArchCase
 
 ## 环境变量配置
 
-后端需要配置管理员账号和密码。不要把真实密码写入 README 或前端代码。
+前端和后端都需要配置环境变量。不要把真实管理员密码写入 README、前端代码或提交到 GitHub。
+
+### 前端环境变量
+
+项目根目录可以参考 `.env.example`：
+
+```env
+VITE_API_BASE_URL=http://localhost:3001/api
+```
+
+线上部署到 Vercel 时，需要把它改成后端线上 API 地址，例如：
+
+```env
+VITE_API_BASE_URL=https://your-archcase-api.onrender.com/api
+```
+
+### 后端环境变量
 
 进入后端目录：
 
@@ -123,6 +141,12 @@ ADMIN_PASSWORD=your-admin-password
 ```
 
 其中 `ADMIN_PASSWORD` 请改成你自己的密码。
+
+线上部署后，`FRONTEND_ORIGIN` 应填写你的前端线上域名，例如：
+
+```env
+FRONTEND_ORIGIN=https://archcase.vercel.app
+```
 
 ## 启动方法
 
@@ -201,6 +225,60 @@ npm run build
 - `POST /api/upload`：上传图片，需要管理员凭证
 - `POST /api/admin/login`：管理员登录
 
+## 部署说明
+
+### 前端部署到 Vercel
+
+当前项目根目录是 React + Vite 前端项目，`package.json` 中的构建命令是：
+
+```bash
+npm run build
+```
+
+Vercel 部署前端时通常配置：
+
+- Framework Preset：Vite
+- Build Command：`npm run build`
+- Output Directory：`dist`
+- Root Directory：项目根目录
+
+如果后端已经部署，需要在 Vercel 项目后台添加环境变量：
+
+```env
+VITE_API_BASE_URL=你的后端线上地址/api
+```
+
+例如：
+
+```env
+VITE_API_BASE_URL=https://your-archcase-api.onrender.com/api
+```
+
+### 后端部署到 Render 或 Railway
+
+后端目录是 `server`，可以单独部署到 Render、Railway 等 Node.js 服务平台。
+
+后端部署时通常配置：
+
+- Root Directory：`server`
+- Install Command：`npm install`
+- Start Command：`npm run dev` 或 `npm start`
+
+后端线上环境变量需要配置：
+
+```env
+PORT=3001
+FRONTEND_ORIGIN=https://archcase.vercel.app
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-admin-password
+```
+
+不要把真实 `ADMIN_PASSWORD` 提交到 GitHub，只在部署平台的环境变量面板中填写。
+
+### 当前数据存储提醒
+
+当前后端使用 `server/data/cases.json` 保存案例数据，使用 `server/uploads` 保存上传图片。它适合本地开发和功能演示。部署到 Render 或 Railway 后，如果平台文件系统不是持久化存储，重启或重新部署可能导致 JSON 数据或上传图片丢失。后续正式上线建议换成数据库和对象存储。
+
 ## 适合展示的项目价值
 
 - 产品逻辑清晰：从单纯的案例展示，升级为公共浏览与后台管理分离的系统。
@@ -216,4 +294,4 @@ npm run build
 - 增加案例排序、标签筛选和收藏标记。
 - 增加图片压缩和图片删除清理策略。
 - 增加表单 loading、保存成功提示和接口错误提示组件。
-- 部署后端服务，并把前端 API 地址改为环境变量配置。
+- 将后端数据从 JSON 文件迁移到云数据库。

@@ -10,7 +10,7 @@ import { normalizeRatings } from './utils/ratings'
 
 const STORAGE_KEY = 'archcase_cases'
 const ADMIN_SESSION_KEY = 'archcase_admin_session'
-const API_BASE_URL = 'http://localhost:3001/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
 const defaultImageById = new Map(cases.map((caseItem) => [caseItem.id, caseItem.image]))
 const defaultImageByName = new Map(cases.map((caseItem) => [caseItem.name, caseItem.image]))
